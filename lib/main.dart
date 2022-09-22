@@ -4,10 +4,9 @@ import 'package:flash_chat_flutter/screens/login_screen.dart';
 import 'package:flash_chat_flutter/screens/registration_screen.dart';
 import 'package:flash_chat_flutter/screens/chat_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
-
-void main() async { 
-   WidgetsFlutterBinding.ensureInitialized();
-   await Firebase.initializeApp();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const FlashChat());
 }
 
@@ -27,6 +26,5 @@ class FlashChat extends StatelessWidget {
     );
   }
 }
-
 
 // 01/09/22 Or 10/09/22
