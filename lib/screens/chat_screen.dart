@@ -17,12 +17,14 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen> {
   final messageTextController = TextEditingController();
+  final ScrollController controller = ScrollController();
   final _auth = FirebaseAuth.instance;
   String? messageText;
 
   @override
   void initState() {
     super.initState();
+
     getCurrentUser();
   }
 
@@ -48,7 +50,6 @@ class ChatScreenState extends State<ChatScreen> {
               icon: const Icon(Icons.close),
               onPressed: () {
                 _auth.signOut();
-                Navigator.pop(context);
               }),
         ],
         title: const Text('⚡️Chat'),
@@ -59,7 +60,9 @@ class ChatScreenState extends State<ChatScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const MessageStream(),
+            MessageStream(
+              controller: controller,
+            ),
             Container(
               decoration: kMessageContainerDecoration,
               child: Row(
@@ -153,40 +156,63 @@ class MessageBubble extends StatelessWidget {
 }
 
 class MessageStream extends StatelessWidget {
-  const MessageStream({super.key});
+  final ScrollController controller;
+  const MessageStream({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('messages').orderBy('date').snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(
+        if (snapshot.hasData) {
+          final messages = snapshot.data!.docs;
+          List<MessageBubble> messageBubbles = [];
+          for (var message in messages) {
+            final messageText =
+                (message.data() as Map<String, dynamic>)['text'];
+
+            final messageSender =
+                (message.data() as Map<String, dynamic>)['sender'].toString();
+
+            var currentUser = loggedInUser!.email;
+
+            final messageBubble = MessageBubble(
+              text: messageText,
+              sender: messageSender,
+              isMe: currentUser == messageSender,
+            );
+            messageBubbles.add(messageBubble);
+          }
+          Future.delayed(const Duration(milliseconds: 0), () {
+            controller.animateTo(controller.position.maxScrollExtent,
+                duration: const Duration(
+                  milliseconds: 1,
+                ),
+                curve: Curves.linear);
+          });
+          return Expanded(
+            child: ListView(
+              controller: controller,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10.0, vertical: 20.0),
+              children: messageBubbles,
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return const Expanded(
+            child: Center(
+              child: Icon(
+                Icons.error,
+                size: 60,
+              ),
+            ),
+          );
+        }
+        return const Expanded(
+          child: Center(
             child: CircularProgressIndicator(
                 backgroundColor: Colors.lightBlueAccent),
-          );
-        }
-        final messages = snapshot.data!.docs.reversed;
-        List<MessageBubble> messageBubbles = [];
-        for (var message in messages) {
-          final messageText = (message.data() as Map<String, dynamic>)['text'];
-          final messageSender =
-              (message.data() as Map<String, dynamic>)['sender'].toString();
-
-          var currentUser = loggedInUser!.email;
-
-          final messageBubble = MessageBubble(
-            text: messageText,
-            sender: messageSender,
-            isMe: currentUser == messageSender,
-          );
-          messageBubbles.add(messageBubble);
-        }
-        return Expanded(
-          child: ListView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10.0, vertical: 20.0),
-            children: messageBubbles,
           ),
         );
       },
